@@ -69,7 +69,9 @@ class OpenAIAPI(ModelAPI):
         )
 
         # resolve api_key
-        is_azure = False
+        # is_azure = False
+        # see https://github.com/UKGovernmentBEIS/inspect_ai/issues/71
+        is_azure = model_args.get("is_azure", False)
         if not self.api_key:
             self.api_key = os.environ.get(
                 AZUREAI_OPENAI_API_KEY, os.environ.get(AZURE_OPENAI_API_KEY, None)
