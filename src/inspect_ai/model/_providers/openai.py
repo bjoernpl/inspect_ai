@@ -102,7 +102,8 @@ class OpenAIAPI(ModelAPI):
                     + " environment variable or the --model-base-url CLI flag to set the base URL."
                 )
 
-            del model_args["is_azure"]  # TypeError: AsyncAzureOpenAI.__init__() got an unexpected keyword argument 'is_azure'
+            if "is_azure" in model_args:
+                del model_args["is_azure"]  # TypeError: AsyncAzureOpenAI.__init__() got an unexpected keyword argument 'is_azure'
             self.client: AsyncAzureOpenAI | AsyncOpenAI = AsyncAzureOpenAI(
                 api_key=api_key,
                 azure_endpoint=base_url,
