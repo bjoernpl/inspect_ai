@@ -1,17 +1,32 @@
 # Changelog
 
-## Unreleased
+## v0.3.19 (Unreleased)
 
-- Evaluate multiple models in parallel by passing a list of models to `eval()`.
+- [vLLM](https://inspect.ai-safety-institute.org.uk/models.html#sec-vllm) model provider.
+- [Groq](https://groq.com/) model provider.
+- Gracefully handle tool calls that include only a single value (rather than a named dict of parameters).
+- Support `tool_choice="any"` for OpenAI models (requires >= 1.24.0 of openai package).
+- Add `cwd` argument to `ToolEnvironment.exec()`.
+- Handle duplicate tool call ids in Inspect View.
+- Handle sorting sample ids of different types in Inspect View.
+- Correctly resolve default model based on CLI --model argument.
+- Read JSON encoded `metadata` field from samples.
+- Ability to host standalone version of Inspect View to view single log files.
+
+## v0.3.18 (14 July 2024)
+
+- [Multiple Scorers](https://inspect.ai-safety-institute.org.uk/scorers.html#sec-multiple-scorers) are now supported for evaluation tasks.
+- [Multiple Models](https://inspect.ai-safety-institute.org.uk/parallelism.html#sec-multiple-models) can now be evaluated in parallel by passing a list of models to `eval()`.
 - Add `api_key` to `get_model()` for explicitly specifying an API key for a model.
 - Improved handling of very large (> 100MB) log files in Inspect View.
 - Use `network_mode: none` for disabling networking by default in Docker tool environments.
 - Shorten the default shutdown grace period for Docker container cleanup to 1 second.
 - Allow tool environent providers to specify a default `max_samples` (set to 25 for the Docker provider).
-- Prevent concurrent calls to `eval_async()` (unsafe because of need to change directories for tasks). Parallel task evaluation will instead be implemented as a top-level feature of `eval()` and `eval_async()`
+- Prevent concurrent calls to `eval_async()` (unsafe because of need to change directories for tasks). Parallel task evaluation will instead be implemented as a top-level feature of `eval()` and `eval_async()`.
 - Match scorers now return answers consistently even when there is no match.
-- Relocate tool related types into a new top-level `inspect_ai.tool` module (previous imports still work fow now, but result in a runtime deprecation warning)
+- Relocate tool related types into a new top-level `inspect_ai.tool` module (previous imports still work fow now, but result in a runtime deprecation warning).
 - Decouple tools entirely from solvers and task state (previously they had ways to interact with metadata, removing this coupling will enable tool use in lower level interactions with models). Accordingly, the `call_tools()` function now operates directly on messages rather than task state.
+- Support token usage for Google models (Inspect now requires `google-generativeai` v0.5.3).
 
 ## v0.3.17 (25 June 2024)
 
@@ -22,17 +37,17 @@
 ## v0.3.16 (24 June 2024)
 
 -   Various fixes for the use of Docker tool environments on Windows.
--   Ability to disable cleanup of tool environments via `--no-toolenv-cleanup`
+-   Ability to disable cleanup of tool environments via `--no-toolenv-cleanup`.
 -   New `inspect toolenv cleanup` command for manually cleaning up tool environments.
 -   `ToolError` exception type for explicitly raising tool errors to the model. Formerly, any exception would be surfaced as a tool error to the model. Now, the `ToolError` exception is required for reporting to the model (otherwise other exception types go through the call stack and result in an eval error).
 -   Resolve `INSPECT_LOG_DIR` in `.env` file relative to `.env` file parent directory.
--   Use `-` for delimiting `--limit` ranges rather than `,`
--   Use HF model device for generate (compatibility with multi-GPU)
+-   Use `-` for delimiting `--limit` ranges rather than `,`.
+-   Use HF model device for generate (compatibility with multi-GPU).
 
 ## v0.3.15 (15 June 2024)
 
--   [Tool Environments](https://ukgovernmentbeis.github.io/inspect_ai/agents.html#sec-tool-environments) for executing tool code in a sandbox.
--   [Caching](https://ukgovernmentbeis.github.io/inspect_ai/caching.html) to reduce the number of model API calls made.
+-   [Tool Environments](https://inspect.ai-safety-institute.org.uk/agents.html#sec-tool-environments) for executing tool code in a sandbox.
+-   [Caching](https://inspect.ai-safety-institute.org.uk/caching.html) to reduce the number of model API calls made.
 -   The `multiple_choice()` solver now has support for questions with multiple correct answers.
 -   More fine grained handling of Claude `BadRequestError` (400) errors (which were formerly all treated as content moderation errors).
 -   Filter out empty TextBlockParam when playing messages back to Claude.
@@ -42,7 +57,7 @@
 -   The `use_tools()` function now uses the `TaskState.tools` setter, so replaces the current set of tools entirely rather than appending to it.
 -   Set `state.completed = False` when `max_messages` is reached.
 -   Allow tools to be declared with no parameters.
--   Allow for null `bytes` field in `Logprobs` and `TopLogprobs`
+-   Allow for null `bytes` field in `Logprobs` and `TopLogprobs`.
 -   Support all Llama series models on Bedrock.
 -   Added `truthfulqa` benchmark.
 -   Added `intercode-ctf` example.
@@ -56,7 +71,7 @@
 -   New `inspect eval-retry` command to retry a log file from a task that ended in error or cancellation.
 -   New `retryable_eval_logs()` function and `--retryable` option for `inspect list logs` to query for tasks not yet completed within a log directory.
 -   Add `shuffled` property to datasets to determine if they were shuffled.
--   Remove unused `extensions` argument from `list_eval_logs()`
+-   Remove unused `extensions` argument from `list_eval_logs()`.
 
 ## v0.3.13 (31 May 2024)
 
@@ -76,18 +91,18 @@
 -   **BREAKING:** The `pattern` scorer has been modified to match against any (or all) regex match groups. This replaces the previous behaviour when there was more than one group, which would only match the second group.
 -   Improved performance for Inspect View on very large datasets (virtualized sample list).
 -   ToolChoice `any` option to indicate the model should use at least one tool (supported by Anthropic and Mistral, mapped to `auto` for OpenAI).
--   Tool calls can now return a simple scalar or `list[ContentText | ContentImage]`
--   Support for updated Anthropic tools beta (tool_choice and image tool results)
+-   Tool calls can now return a simple scalar or `list[ContentText | ContentImage]`.
+-   Support for updated Anthropic tools beta (tool_choice and image tool results).
 -   Report tool_error back to model if it provides invalid JSON for tool calls arguments (formerly this halted the entire eval with an error).
 -   New `max_samples` option to control how many samples are run in parallel (still defaults to running all samples in parallel).
 -   Add `boolq.py` benchmark.
 -   Add `piqa.py` benchmark.
--   View: Improved markdown rendering (properly escape reference links)
+-   View: Improved markdown rendering (properly escape reference links).
 -   Improved typing for example_dataset function.
 -   Setuptools entry point for loading custom model extensions.
 -   Break optional `tuple` return out of `ToolResult` type.
 -   Bugfix: always read original sample message(s) for `TaskState.input_text`.
--   Bugfix: remove write counter from log (could have resulted in incomplete/invalid logs propagating to the viewer)
+-   Bugfix: remove write counter from log (could have resulted in incomplete/invalid logs propagating to the viewer).
 -   Bugfix: handle task names that include spaces in log viewer.
 
 ## v0.3.9 (14 May 2024)

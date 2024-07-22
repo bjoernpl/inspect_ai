@@ -11,7 +11,8 @@ from inspect_ai._display import display
 from inspect_ai._display.logger import init_logger
 from inspect_ai._util.dotenv import dotenv_environ, init_dotenv
 from inspect_ai._util.error import exception_message
-from inspect_ai._util.path import chdir_python, cwd_relative_path
+from inspect_ai._util.file import absolute_file_path
+from inspect_ai._util.path import chdir_python
 from inspect_ai._util.platform import platform_init
 from inspect_ai._util.registry import registry_lookup
 from inspect_ai.log import EvalConfig, EvalLog, EvalLogInfo, read_eval_log
@@ -22,7 +23,7 @@ from inspect_ai.model import (
     GenerateConfigArgs,
     Model,
 )
-from inspect_ai.model._model import resolve_models
+from inspect_ai.model._model import init_active_model, resolve_models
 from inspect_ai.solver import Plan, Solver
 from inspect_ai.tool import ToolEnvironmentSpec
 from inspect_ai.tool._environment.context import startup_tool_environments
@@ -222,9 +223,11 @@ async def eval_async(
             model, model_base_url, model_args, GenerateConfig(**kwargs)
         )
 
-        # resolve tasks
+        # resolve tasks (set active model to resolve uses of the
+        # 'default' model in tools, solvers, and scorers)
         resolved_tasks: list[ResolvedTask] = []
         for m in models:
+            init_active_model(m)
             resolved_tasks.extend(resolve_tasks(tasks, task_args, m, toolenv))
 
         # warn and return empty string if we resolved no tasks
@@ -234,7 +237,7 @@ async def eval_async(
 
         # resolve recorder
         log_dir = log_dir if log_dir else os.environ.get("INSPECT_LOG_DIR", "./logs")
-        log_dir = cwd_relative_path(log_dir)
+        log_dir = absolute_file_path(log_dir)
         recorder = JSONRecorder(log_dir, log_buffer=log_buffer)
 
         # create config

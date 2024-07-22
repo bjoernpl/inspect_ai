@@ -61,11 +61,17 @@ class OpenAIAPI(ModelAPI):
     ) -> None:
         # call super
         super().__init__(
-            model_name=model_name, base_url=base_url, api_key=api_key, config=config
+            model_name=model_name,
+            base_url=base_url,
+            api_key=api_key,
+            api_key_vars=[OPENAI_API_KEY, AZURE_OPENAI_API_KEY, AZUREAI_OPENAI_API_KEY],
+            config=config,
         )
 
         # resolve api_key
-        is_azure = False
+        # is_azure = False
+        # see https://github.com/UKGovernmentBEIS/inspect_ai/issues/71
+        is_azure = model_args.get("is_azure", False)
         if not self.api_key:
             self.api_key = os.environ.get(
                 AZUREAI_OPENAI_API_KEY, os.environ.get(AZURE_OPENAI_API_KEY, None)
@@ -96,6 +102,8 @@ class OpenAIAPI(ModelAPI):
                     + " environment variable or the --model-base-url CLI flag to set the base URL."
                 )
 
+            if "is_azure" in model_args:
+                del model_args["is_azure"]  # TypeError: AsyncAzureOpenAI.__init__() got an unexpected keyword argument 'is_azure'
             self.client: AsyncAzureOpenAI | AsyncOpenAI = AsyncAzureOpenAI(
                 api_key=api_key,
                 azure_endpoint=base_url,
@@ -145,7 +153,7 @@ class OpenAIAPI(ModelAPI):
                 ),
                 **self.completion_params(config),
             )
-            choices = self._chat_choices_from_response(response)
+            choices = self._chat_choices_from_response(response, tools)
             return ModelOutput(
                 model=response.model,
                 choices=choices,
@@ -169,10 +177,10 @@ class OpenAIAPI(ModelAPI):
             )
 
     def _chat_choices_from_response(
-        self, response: ChatCompletion
+        self, response: ChatCompletion, tools: list[ToolInfo]
     ) -> list[ChatCompletionChoice]:
         # adding this as a method so we can override from other classes (e.g together)
-        return chat_choices_from_response(response)
+        return chat_choices_from_response(response, tools)
 
     @override
     def is_rate_limit(self, ex: BaseException) -> bool:
@@ -298,29 +306,33 @@ def chat_tool_choice(tool_choice: ToolChoice) -> ChatCompletionToolChoiceOptionP
         return ChatCompletionNamedToolChoiceParam(
             type="function", function=dict(name=tool_choice.name)
         )
-    # openai does not support 'any' so we force it to 'auto'
+    # openai supports 'any' via the 'required' keyword
     elif tool_choice == "any":
-        return "auto"
+        return "required"
     else:
         return tool_choice
 
 
-def chat_tool_calls(message: ChatCompletionMessage) -> list[ToolCall] | None:
+def chat_tool_calls(
+    message: ChatCompletionMessage, tools: list[ToolInfo]
+) -> list[ToolCall] | None:
     if message.tool_calls:
         return [
-            parse_tool_call(call.id, call.function.name, call.function.arguments)
+            parse_tool_call(call.id, call.function.name, call.function.arguments, tools)
             for call in message.tool_calls
         ]
     else:
         return None
 
 
-def chat_choices_from_response(response: ChatCompletion) -> list[ChatCompletionChoice]:
+def chat_choices_from_response(
+    response: ChatCompletion, tools: list[ToolInfo]
+) -> list[ChatCompletionChoice]:
     choices = list(response.choices)
     choices.sort(key=lambda c: c.index)
     return [
         ChatCompletionChoice(
-            message=chat_message_assistant(choice.message),
+            message=chat_message_assistant(choice.message, tools),
             stop_reason=as_stop_reason(choice.finish_reason),
             logprobs=(
                 Logprobs(**choice.logprobs.model_dump())
@@ -332,11 +344,13 @@ def chat_choices_from_response(response: ChatCompletion) -> list[ChatCompletionC
     ]
 
 
-def chat_message_assistant(message: ChatCompletionMessage) -> ChatMessageAssistant:
+def chat_message_assistant(
+    message: ChatCompletionMessage, tools: list[ToolInfo]
+) -> ChatMessageAssistant:
     return ChatMessageAssistant(
         content=message.content or "",
         source="generate",
-        tool_calls=chat_tool_calls(message),
+        tool_calls=chat_tool_calls(message, tools),
     )
 
 

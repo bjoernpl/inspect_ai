@@ -16,6 +16,8 @@ export const SamplesTab = (props) => {
     sort,
     epoch,
     context,
+    selectedScore,
+    //setSelectedScore,
   } = props;
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -156,7 +158,7 @@ export const SamplesTab = (props) => {
         index="0"
         key=${`${task}-single-sample`}
         id="sample-display"
-        sample=${items[0].data}
+        sample=${samples[0]}
         sampleDescriptor=${sampleDescriptor}
         context=${context}
       />`,
@@ -169,6 +171,7 @@ export const SamplesTab = (props) => {
         sampleDescriptor=${sampleDescriptor}
         selectedIndex=${selectedIndex}
         setSelectedIndex=${setSelectedIndex}
+        selectedScore=${selectedScore}
         nextSample=${nextSample}
         prevSample=${previousSample}
         showSample=${showSample}
@@ -227,6 +230,10 @@ const noGrouping = (samples, order) => {
 
 // Groups by sample (showing separators for Epochs)
 const groupBySample = (samples, sampleDescriptor, order) => {
+  // ensure that we are sorted by id
+  samples = samples.sort((a, b) => {
+    return ("" + a.id).localeCompare(b.id);
+  });
   const groupCount = samples.length / sampleDescriptor.epochs;
   const itemCount = samples.length / groupCount;
   const counter = getCounter(itemCount, groupCount, order);
